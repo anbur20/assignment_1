@@ -25,7 +25,7 @@ dbcursor=db.cursor()
 st.set_page_config(page_title="Placement Eligibility Application", layout="wide", initial_sidebar_state="expanded")
 
 # Sidebar - Page Selection
-page = st.sidebar.radio(" Selection List ", ["Home Page","Eligibility Filter", "Placement Insights"])
+page = st.sidebar.radio(" Selection List ", ["Home Page","Eligibility Filter", "Placement Insights","Student Info","More Selection"])
 
 if page == "Home Page":
     st.title("Placement Eligibility Application ")
@@ -66,8 +66,7 @@ elif page == "Placement Insights":
     st.title(" PLACEMENT INSIGHTs ")
 
  # Declare the dropdown list and the query relavant to it   
-    queries = {
-        "Average Placement Package": "SELECT AVG(placement_package) AS avg_package FROM Placement_Table",
+    queries = {"Average Placement Package": "SELECT AVG(placement_package) AS avg_package FROM Placement_Table",
         "Average Interview Rounds Cleared": "SELECT AVG(interview_rounds_cleared) AS avg_rounds FROM Placement_Table",
         "Internships vs. Placement": "SELECT internships_completed, COUNT(*) AS student_count FROM Placement_Table GROUP BY internships_completed",
         "Most Common Graduation Year Among Students": "SELECT graduation_year, COUNT(*) AS count FROM Students_Table GROUP BY graduation_year ORDER BY count DESC LIMIT 1",
@@ -99,3 +98,77 @@ elif page == "Placement Insights":
         timenow = datetime.now().strftime("%Y-%m-%d  %H:%M:%S")
         time_placeholder.write(f"Current Date & Time: {timenow}")
         time.sleep(1)
+elif page == "Student Info":
+    st.title(" Select Student for Info ")
+    
+# Get the Students info in the list
+    query_1 = "Select student_id from Students_table"
+    conn = db
+    df = pd.read_sql(query_1, conn)
+    selected_columns_df = df['student_id'].tolist()
+    selected_query = st.selectbox("Select an Student", selected_columns_df)
+    select_student = selected_query
+
+    query = f"""
+    SELECT s.student_id, s.name, s.age, s.course_batch, p.problems_solved, p.assessments_completed, p.latest_project_score,
+           ss.communication, ss.teamwork, ss.presentation, ss.leadership, ss.critical_thinking, ss.interpersonal_skills,
+           pl.placement_status
+    FROM Students_Table s
+    JOIN Programming_Table p ON s.student_id = p.student_id
+    JOIN Soft_Skill_Table ss ON s.student_id = ss.student_id
+    JOIN Placement_Table pl ON s.student_id = pl.student_id
+    WHERE s.student_id = '{select_student}'
+    Order by s.student_id asc
+    """   
+    if conn and conn.is_connected():
+        df = pd.read_sql(query, conn)
+    else:
+        st.write("Connection is Lost")
+
+    conn.close()
+    
+    st.dataframe(df)
+# Date and Time to display with dynamically update
+    time_placeholder = st.empty()
+
+    while True:
+        timenow = datetime.now().strftime("%Y-%m-%d  %H:%M:%S")
+        time_placeholder.write(f"Current Date & Time: {timenow}")
+        time.sleep(1)
+elif page == "More Selection":
+    st.title(" Select from the below option ")
+    
+# Based on the button selection list the details of the students
+    left, right = st.columns(2)
+    if left.button("Students in Ready State", use_container_width=True):
+        query = f"""
+        SELECT s.student_id, s.name, s.course_batch, p.problems_solved, p.assessments_completed, p.latest_project_score,
+        ss.communication, ss.teamwork, ss.presentation, ss.leadership, ss.critical_thinking, ss.interpersonal_skills,
+        pl.placement_status
+        FROM Students_Table s
+        JOIN Programming_Table p ON s.student_id = p.student_id
+        JOIN Soft_Skill_Table ss ON s.student_id = ss.student_id
+        JOIN Placement_Table pl ON s.student_id = pl.student_id
+        WHERE pl.placement_status = 'Ready'
+        Order by s.student_id asc
+        """
+        conn = db
+        df = pd.read_sql(query, conn)
+        conn.close()
+        st.dataframe(df)
+    
+    if right.button("Students got Placed",  use_container_width=True):
+        query = f"""
+        SELECT s.student_id, s.name, s.course_batch, p.problems_solved, p.assessments_completed, p.latest_project_score,pl.company_name,
+        pl.placement_status
+        FROM Students_Table s
+        JOIN Programming_Table p ON s.student_id = p.student_id
+        JOIN Soft_Skill_Table ss ON s.student_id = ss.student_id
+        JOIN Placement_Table pl ON s.student_id = pl.student_id
+        WHERE pl.placement_status = 'Placed'
+        Order by s.student_id asc
+        """
+        conn = db
+        df = pd.read_sql(query, conn)
+        conn.close()
+        st.dataframe(df)
